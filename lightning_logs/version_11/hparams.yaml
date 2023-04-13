@@ -1,0 +1,42 @@
+accelerator: cpu
+batch_size: 32
+check_val_every_n_epoch: 2
+decoder_conv_t_filters:
+- 64
+- 64
+- 32
+- 1
+decoder_conv_t_kernel_size:
+- 3
+- 3
+- 3
+- 3
+decoder_conv_t_strides:
+- 1
+- 1
+- 1
+- 1
+encoder_conv_filters:
+- 32
+- 64
+- 64
+- 64
+encoder_conv_kernel_size:
+- 3
+- 3
+- 3
+- 3
+encoder_conv_strides:
+- 1
+- 1
+- 1
+- 1
+input_dim: !!python/tuple
+- 1
+- 28
+- 28
+lr: 0.0005
+max_epochs: 5
+use_batch_norm: false
+use_dropout: false
+z_dim: 2
