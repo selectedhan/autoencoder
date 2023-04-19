@@ -1,28 +1,30 @@
 import numpy as np
 import torch
-from torchsummary import summary
+# from torchsummary import summary
+from typing import List
 
 class Reshape(torch.nn.Module):
     def __init__(self, shape):
         super().__init__()
         self.shape = shape
     def forward(self, x):
-        return x.view(-1, *self.shape)
+        return x.reshape(-1, *self.shape)
 
 class AutoEncoder(torch.nn.Module):
     def __init__(
         self,
-        input_dim,
+        input_dim: List,
         encoder_conv_filters,
-        encoder_conv_kernel_size,
-        encoder_conv_strides,
-        decoder_conv_t_filters,
-        decoder_conv_t_kernel_size,
-        decoder_conv_t_strides,
-        z_dim,
-        use_batch_norm = False,
-        use_dropout = False,
-    ):
+        encoder_conv_kernel_size: List,
+        encoder_conv_strides: List,
+        decoder_conv_t_filters: List,
+        decoder_conv_t_kernel_size: List,
+        decoder_conv_t_strides: List,
+        z_dim: int,
+        use_batch_norm: bool = False,
+        use_dropout: bool = False,
+    ) -> torch.nn.Module :
+        
         super().__init__()
         self.name = 'autoencoder'
         
@@ -44,7 +46,7 @@ class AutoEncoder(torch.nn.Module):
         self._build_decoder()
 
     def _get_out_shape(self, model, input_dim) :
-        return model(torch.rand(1, *input_dim)).data.shape[1:]
+        return model(torch.rand(1, *input_dim)).detach().shape[1:]
     
     def _build_encoder(self):
         # Encoder

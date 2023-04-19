@@ -7,12 +7,12 @@ sys.path.append(
 
 import torch
 import torchvision
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 
 from modules.autoencoder import AutoEncoder
 
 class AE(pl.LightningModule):
-    def __init__(self, hparams) :
+    def __init__(self, **hparams) :
         super().__init__()
         # self.hparams = hparams
         self.save_hyperparameters(hparams)
@@ -55,13 +55,12 @@ class AE(pl.LightningModule):
         return torch.utils.data.DataLoader(self.dataset_test, batch_size=self.hparams.batch_size)
 
 
-    def forwad(self, batch):
-        X, y = batch
+    def forward(self, X):
         return self.model(X)
     
     def training_step(self, batch, batch_idx):
         X, y = batch
-        X_reconstruction = self.model(X)
+        X_reconstruction = self(X)
 
         loss = self.criterion(X_reconstruction, X)
 
@@ -70,7 +69,7 @@ class AE(pl.LightningModule):
     
     def validation_step(self, batch, batch_idx) :
         X, y = batch
-        X_reconstruction = self.model(X)
+        X_reconstruction = self(X)
 
         loss = self.criterion(X_reconstruction, X)
         self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
@@ -97,7 +96,8 @@ if __name__ == '__main__':
         z_dim = 2,
         use_batch_norm = False,
         use_dropout = False,
-        batch_size = BATCH_SIZE
+        batch_size = BATCH_SIZE,
+        lr = .05,
     )
 
     pl.seed_everything(1991)
@@ -112,7 +112,7 @@ if __name__ == '__main__':
         max_epochs= EPOCH,
         accelerator= 'cpu',
         # devices=3,
-        check_val_every_n_epoch=2,
+        val_check_interval= .4,
         callbacks = [callback_checkpoint],
         # fast_dev_run=False,
         # precision= 16,
