@@ -1,22 +1,19 @@
-# import numpy as np
 import os
 import sys
 sys.path.append(
     os.path.dirname(os.path.abspath(__file__))
-)
+    )   # 이걸 해야지 train.py 에서 아래 from modules를 임포트 가능함!
 
 import torch
-import torchvision
 import lightning.pytorch as pl
-
-from modules.autoencoder import AutoEncoder
+from modules import autoencoder
 
 class AE(pl.LightningModule):
-    def __init__(self, **hparams) :
+    def __init__(self, hparams) :
         super().__init__()
         # self.hparams = hparams
         self.save_hyperparameters(hparams)
-        self.model = AutoEncoder(
+        self.model = autoencoder.AutoEncoder(
             self.hparams.input_dim,
             self.hparams.encoder_conv_filters,
             self.hparams.encoder_conv_kernel_size,
@@ -30,29 +27,6 @@ class AE(pl.LightningModule):
         )
         self.optimizer = torch.optim.Adam
         self.criterion = torch.nn.MSELoss()
-
-    def prepare_data(self):
-        data_train = torchvision.datasets.MNIST(
-            root = 'data',
-            train=True,
-            download=True,
-            transform = torchvision.transforms.ToTensor()
-        )
-
-        self.dataset_train, self.dataset_val = torch.utils.data.random_split(data_train, [55000, 5000])
-    
-        self.dataset_test = torchvision.datasets.MNIST(
-            root = 'data',
-            train=False,
-            download=True,
-            transform = torchvision.transforms.ToTensor()
-        )    
-    def train_dataloader(self):
-        return torch.utils.data.DataLoader(self.dataset_train, batch_size=self.hparams.batch_size)
-    def val_dataloader(self):
-        return torch.utils.data.DataLoader(self.dataset_val, batch_size=self.hparams.batch_size)
-    def test_dataloader(self):
-        return torch.utils.data.DataLoader(self.dataset_test, batch_size=self.hparams.batch_size)
 
 
     def forward(self, X):
@@ -80,27 +54,34 @@ class AE(pl.LightningModule):
 
 if __name__ == '__main__':
     import time
+    import os
+    import sys
+    sys.path.append(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
+    from datasets import mnist_dataset
+    
+    pl.seed_everything(1991)
 
     BATCH_SIZE = 32
-    EPOCH = 5
+    EPOCH = 2
     LEARNING_RATE = .0005    
 
-    model = AE(
-        input_dim = (1,28,28),
-        encoder_conv_filters = [1], #[32, 64, 64, 64],
-        encoder_conv_kernel_size = [3], #[3, 3, 3, 3],
-        encoder_conv_strides = [1], #[1, 1, 1, 1],    #[1, 2, 2, 1]
-        decoder_conv_t_filters = [1], #[64, 64, 32, 1],
-        decoder_conv_t_kernel_size = [3], #[3, 3, 3, 3],
-        decoder_conv_t_strides = [1], #[1, 1, 1, 1],  # [1, 2, 2, 1]
-        z_dim = 2,
-        use_batch_norm = False,
-        use_dropout = False,
-        batch_size = BATCH_SIZE,
-        lr = .05,
+    model = AE({
+        'input_dim': (1,28,28),
+        'encoder_conv_filters': [1], #[32, 64, 64, 64],
+        'encoder_conv_kernel_size': [3], #[3, 3, 3, 3],
+        'encoder_conv_strides': [1], #[1, 1, 1, 1],    #[1, 2, 2, 1]
+        'decoder_conv_t_filters': [1], #[64, 64, 32, 1],
+        'decoder_conv_t_kernel_size': [3], #[3, 3, 3, 3],
+        'decoder_conv_t_strides': [1], #[1, 1, 1, 1],  # [1, 2, 2, 1]
+        'z_dim': 2,
+        'use_batch_norm': False,
+        'use_dropout': False,
+        'batch_size': BATCH_SIZE,
+        'lr': .05}
     )
 
-    pl.seed_everything(1991)
     callback_checkpoint = pl.callbacks.ModelCheckpoint(
         monitor='val_loss',
         mode = 'min',
@@ -112,7 +93,8 @@ if __name__ == '__main__':
         max_epochs= EPOCH,
         accelerator= 'cpu',
         # devices=3,
-        val_check_interval= .4,
+        # val_check_interval= .4,
+        check_val_every_n_epoch= 2,
         callbacks = [callback_checkpoint],
         # fast_dev_run=False,
         # precision= 16,
@@ -120,11 +102,21 @@ if __name__ == '__main__':
     )
     # lr_finder = trainer.tuner.lr_find(model, loader_train)
     # model.hparams.lr = lr_finder.suggestion()
+    
+    dataset_train= mnist_dataset.get_mnist_dataset(phase= 'train')
+    dataset_test= mnist_dataset.get_mnist_dataset(phase= 'test')
+    
+    loader_train= torch.utils.data.DataLoader(dataset_train, batch_size= BATCH_SIZE, shuffle=True)
+    loader_test= torch.utils.data.DataLoader(dataset_test, batch_size= BATCH_SIZE, shuffle=False)
 
     time_start = time.time()
-    trainer.fit(    
+
+    trainer.fit(
         model = model,
+        train_dataloaders= loader_train,
+        val_dataloaders= loader_test,
     )
+
     time_end = time.time()
 
     print(f'elapsed time : {time_end - time_start}')
